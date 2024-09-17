@@ -1,8 +1,10 @@
+import { getCurrentGeneration } from "./utils/db";
 import { Hono } from "hono";
 
 const app = new Hono();
 
 app.get("/", (c) => {
+  console.log(getCurrentGeneration());
   return c.text("Hello World!");
 });
 
