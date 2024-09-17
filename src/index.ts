@@ -1,7 +1,28 @@
+import { WebSocketHandler } from "bun";
 import { addGeneration, getCurrentGeneration, setCompleted } from "./utils/db";
 import { Hono } from "hono";
+import { createBunWebSocket } from "hono/bun";
+import { WSContext } from "hono/ws";
+
+const { upgradeWebSocket, websocket } = createBunWebSocket();
+let websockets: WSContext[] = [];
 
 const app = new Hono();
+
+app.use(
+  "/ws",
+  upgradeWebSocket(() => {
+    let index: number;
+    return {
+      onOpen(_, ws) {
+        index = websockets.push(ws);
+      },
+      onClose() {
+        websockets.splice(index, 1);
+      },
+    };
+  }),
+);
 
 function random(min: number, max: number) {
   return Math.floor(Math.random() * (max - min) + min);
@@ -17,6 +38,15 @@ setInterval(() => {
     time: Date.now(),
     generation: randomNumber,
   });
+
+  for (const ws of websockets) {
+    ws.send(
+      JSON.stringify({
+        type: "new-generation",
+        generation: randomNumber,
+      }),
+    );
+  }
 }, 1000);
 
 app.get("/", (c) => {
@@ -30,6 +60,7 @@ app.get("/generations/current", (c) => {
 
 const server = Bun.serve({
   fetch: app.fetch,
+  websocket: websocket as unknown as WebSocketHandler,
   port: parseInt(process.env.PORT ?? "3000"),
 });
 console.log(`Listening on ${server.hostname}:${server.port}`);
