@@ -231,6 +231,7 @@ app.get("/", (c) => {
             chart: {
               type: "line",
               zoomType: "x",
+              animation: false,
               backgroundColor: "transparent",
               style: {
                 fontFamily: '"Inter", sans-serif',
