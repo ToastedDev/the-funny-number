@@ -2,6 +2,13 @@
   "name": "rng",
   "module": "src/index.ts",
   "type": "module",
+  "scripts": {
+    "start": "bun .",
+    "dev": "bun --watch ."
+  },
+  "dependencies": {
+    "hono": "^4.6.2"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
