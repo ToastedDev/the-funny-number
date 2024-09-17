@@ -25,6 +25,12 @@ app.use(
     return {
       onOpen(_, ws) {
         index = websockets.push(ws);
+        ws.send(
+          JSON.stringify({
+            type: "generations",
+            generations: getGenerations().slice(-60),
+          }),
+        );
       },
       onClose() {
         websockets.splice(index, 1);
@@ -113,6 +119,9 @@ app.get("/", (c) => {
     display: flex;
     align-items: center;
   `;
+  const chartClass = css`
+    width: 100%;
+  `;
 
   return c.html(
     <html>
@@ -120,6 +129,7 @@ app.get("/", (c) => {
         <title>The Funny Number</title>
         <link rel="stylesheet" href="/odometer.css" />
         <script src="/odometer.js"></script>
+        <script src="https://code.highcharts.com/highcharts.js"></script>
         <Style>
           {css`
             @import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
@@ -201,6 +211,9 @@ app.get("/", (c) => {
             <p class={smallParagraphClass}>Time generated</p>
           </div>
         </div>
+        <div class={cardClass}>
+          <div class={chartClass} id="chart"></div>
+        </div>
       </body>
       {html`
         <script>
@@ -214,12 +227,113 @@ app.get("/", (c) => {
             });
           }
 
+          const chart = Highcharts.chart("chart", {
+            chart: {
+              type: "line",
+              zoomType: "x",
+              backgroundColor: "transparent",
+              style: {
+                fontFamily: '"Inter", sans-serif',
+                color: "white",
+              },
+            },
+            title: {
+              text: "Generations in the past minute",
+              style: {
+                color: "white",
+              },
+            },
+            xAxis: {
+              type: "datetime",
+              title: {
+                text: "Time",
+                style: {
+                  color: "white",
+                  fontWeight: "bold",
+                },
+              },
+              labels: {
+                style: {
+                  color: "#E0E0E0",
+                },
+                format: "{value:%H:%M:%S}",
+              },
+              dateTimeLabelFormats: {
+                second: "%H:%M:%S",
+                minute: "%H:%M",
+                hour: "%H:%M",
+                day: "%e. %b",
+                week: "%e. %b",
+                month: "%b '%y",
+                year: "%Y",
+              },
+              tickPixelInterval: 150,
+              lineColor: "#333333",
+              tickColor: "#333333",
+            },
+            yAxis: {
+              title: {
+                text: "Generation",
+                style: {
+                  color: "#E0E0E0",
+                  fontWeight: "bold",
+                },
+              },
+              plotBands: [
+                {
+                  from: 60_000_000,
+                  to: 69_696_969,
+                  color: "#27272a",
+                },
+              ],
+              labels: {
+                style: {
+                  color: "white",
+                },
+              },
+              gridLineColor: "#333333",
+              min: 0,
+              max: 100_000_000,
+            },
+            legend: {
+              enabled: false,
+            },
+            plotOptions: {
+              line: {
+                marker: {
+                  enabled: false,
+                },
+              },
+            },
+            series: [
+              {
+                name: "Generations",
+                color: "aquamarine",
+              },
+            ],
+            credits: {
+              enabled: true,
+              text: "The Funny Number",
+              href: "/",
+              style: {
+                color: "#E0E0E0",
+              },
+            },
+          });
+
           const ws = new WebSocket("ws://localhost:3000/ws");
           ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.type === "new-generation") {
+              const date = new Date();
+
               const currentGeneration = document.getElementById("current-gen");
               currentGeneration.innerHTML = data.generation;
+
+              if (chart.series[0].points.length > 60) {
+                chart.series[0].data[0].remove();
+              }
+              chart.series[0].addPoint([date.getTime(), data.generation]);
 
               const generations = document.getElementById("generations");
               generations.setAttribute(
@@ -229,7 +343,6 @@ app.get("/", (c) => {
               generations.innerHTML =
                 generations.getAttribute("data-generations");
 
-              const date = new Date();
               document.getElementById("year").innerHTML = date.getUTCFullYear();
               document.getElementById("month").innerHTML =
                 date.getUTCMonth() + 1;
@@ -239,6 +352,10 @@ app.get("/", (c) => {
                 date.getUTCMinutes();
               document.getElementById("second").innerHTML =
                 date.getUTCSeconds();
+            } else if (data.type === "generations") {
+              chart.series[0].setData(
+                data.generations.map((g) => [g.time, g.generation]),
+              );
             }
           };
         </script>
