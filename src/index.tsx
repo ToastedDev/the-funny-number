@@ -50,7 +50,16 @@ setInterval(() => {
 }, 1000);
 
 app.get("/", (c) => {
-  return c.text("Hello World!");
+  return c.html(
+    <html>
+      <head>
+        <title>Random Number Generator</title>
+      </head>
+      <body>
+        <h1>Hello World!</h1>
+      </body>
+    </html>,
+  );
 });
 
 app.get("/generations/current", (c) => {

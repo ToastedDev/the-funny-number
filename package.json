@@ -1,6 +1,6 @@
 {
   "name": "rng",
-  "module": "src/index.ts",
+  "module": "src/index.tsx",
   "type": "module",
   "scripts": {
     "start": "bun .",
