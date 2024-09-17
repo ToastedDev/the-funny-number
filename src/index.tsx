@@ -1,13 +1,15 @@
-import { WebSocketHandler } from "bun";
+import type { WebSocketHandler } from "bun";
 import { addGeneration, getCurrentGeneration, setCompleted } from "./utils/db";
 import { Hono } from "hono";
-import { createBunWebSocket } from "hono/bun";
-import { WSContext } from "hono/ws";
+import { createBunWebSocket, serveStatic } from "hono/bun";
+import type { WSContext } from "hono/ws";
+import { html } from "hono/html";
 
 const { upgradeWebSocket, websocket } = createBunWebSocket();
 let websockets: WSContext[] = [];
 
 const app = new Hono();
+app.use("/*", serveStatic({ root: "public" }));
 
 app.use(
   "/ws",
@@ -50,14 +52,30 @@ setInterval(() => {
 }, 1000);
 
 app.get("/", (c) => {
+  const { generation: currentGeneration } = getCurrentGeneration();
   return c.html(
     <html>
       <head>
         <title>Random Number Generator</title>
+        <link rel="stylesheet" href="/odometer.css" />
+        <script src="/odometer.js"></script>
       </head>
       <body>
         <h1>Hello World!</h1>
+        <span class="odometer">{currentGeneration}</span>
       </body>
+      {html`
+        <script>
+          const ws = new WebSocket("ws://localhost:3000/ws");
+          ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "new-generation") {
+              const odometer = document.querySelector(".odometer");
+              odometer.innerHTML = data.generation;
+            }
+          };
+        </script>
+      `}
     </html>,
   );
 });
